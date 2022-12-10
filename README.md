@@ -5,4 +5,5 @@
 But when I experimented: 
 + **fastformer time cost is much higher than transformer and performance is sometimes worse**.
 + **positional embedding has worse performance than positional encoding.**
+
 The encoder architecture of both models and config are the same, I only changed the capture contextual information mechanism (additive-attention & self-attention) in `fastformer_encoder.MultiHeadFastAttention` and `transformer_encoder.MultiHeadAttention`. Can you give me an explanation? 
