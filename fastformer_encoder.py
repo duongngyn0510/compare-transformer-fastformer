@@ -7,7 +7,7 @@ import numpy as np
 
 
 
-class MultiHeadAttention(nn.Module):
+class MultiHeadFastAttention(nn.Module):
     def __init__(self, d_k, d_model, n_heads):
         super().__init__()
         self.d_k = d_k
@@ -100,7 +100,7 @@ class TransformerBlock(nn.Module):
         super().__init__()
         self.ln1 = nn.LayerNorm(d_model)
         self.ln2 = nn.LayerNorm(d_model)
-        self.mha = MultiHeadAttention(d_k, d_model, n_heads)
+        self.mha = MultiHeadFastAttention(d_k, d_model, n_heads)
         self.ann = nn.Sequential(
             nn.Linear(d_model, d_model * 4),
             nn.GELU(),
