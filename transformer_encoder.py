@@ -5,6 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 
 class MultiHeadAttention(nn.Module):
@@ -76,6 +77,16 @@ class PositionalEncoding(nn.Module):
         return self.dropout(x)
 
 
+class PositionalEmbedding(nn.Module):
+    def __init__(self, d_model, max_len=1024):
+        super().__init__()
+        self.pos_emb = nn.Embedding(max_len, d_model)
+    
+    def forward(self, x):
+        x = self.pos_emb(x)
+        return x
+
+
 class TransformerBlock(nn.Module):
     def __init__(self, d_k, d_model, n_heads, dropout_prob=0.1):
         super().__init__()
@@ -107,11 +118,16 @@ class TransformerEncoder(nn.Module):
         n_heads,
         n_layers,
         n_classes,
-        dropout_prob):
+        dropout_prob, positional_embedding=False):
         super().__init__()
 
         self.embedding = nn.Embedding(vocab_size, d_model)
-        self.pos_encoding = PositionalEncoding(d_model, max_len, dropout_prob)
+        self.positional_embedding = positional_embedding
+        if not positional_embedding:
+            self.pos_encoding = PositionalEncoding(d_model, max_len, dropout_prob)
+        else:
+            self.pos_embedding = PositionalEmbedding(d_model, max_len)
+
         transformer_blocks = [
             TransformerBlock(d_k, d_model, n_heads, dropout_prob) for _ in range(n_layers)]
 
@@ -121,8 +137,15 @@ class TransformerEncoder(nn.Module):
         self.classifier = nn.Linear(20, n_classes)
 
     def forward(self, x, mask=None):
+        n = x.shape[1]
         x = self.embedding(x)
-        x = self.pos_encoding(x)
+        if not self.positional_embedding:
+            x = self.pos_encoding(x)
+        else:
+            pos_emb = self.pos_embedding(torch.arange(n, device=device))
+            pos_emb = rearrange(pos_emb, 'n d -> () n d')
+            x = x + pos_emb
+
         for block in self.transformer_blocks:
             x = block(x, mask)
         x = self.ln(x)
