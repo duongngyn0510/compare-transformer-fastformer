@@ -20,8 +20,8 @@ class MultiHeadAttention(nn.Module):
 
         self.alpha_weights = nn.Parameter(torch.randn(d_k))
         self.beta_weights = nn.Parameter(torch.randn(d_k))
-
         self.weight_r = nn.Linear(d_k, d_k)
+        self.scale_factor = d_k ** -0.5
 
         self.n_heads = n_heads
         self.fc = nn.Linear(d_k * n_heads, d_model)
@@ -38,11 +38,11 @@ class MultiHeadAttention(nn.Module):
         n, h, t, d = q.shape # batch_size, n_heads, sequence_lenght, dim
 
         # global query vector
-        alpha = torch.einsum('n h t d, d -> n h t', q, self.alpha_weights)
+        alpha = torch.einsum('n h t d, d -> n h t', q, self.alpha_weights) * self.scale_factor
         if mask is not None:
             mask = rearrange(mask, 'n t -> n () t')
             alpha = alpha.masked_fill(
-                mask == 0, float('-inf')
+                mask==0, float('-inf')
             )
         alpha = torch.softmax(alpha, dim=-1)
         alpha = repeat(alpha, 'n h t -> n h t copy', copy=d)
@@ -53,10 +53,10 @@ class MultiHeadAttention(nn.Module):
         p = repeat_global_query * k
 
         # global key vector
-        beta = torch.einsum('b h t d, d -> b h t', p, self.beta_weights)
+        beta = torch.einsum('b h t d, d -> b h t', p, self.beta_weights) * self.scale_factor
         if mask is not None:
             beta = beta.masked_fill(
-                mask == 0, float('-inf')
+                mask==0, float('-inf')
             )
         beta = torch.softmax(beta, dim=-1)
         beta = repeat(beta, 'n h t -> n h t copy', copy=d)
